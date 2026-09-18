@@ -1,0 +1,10 @@
+# ml-service/requirements.txt
+#
+# Feature 4B – Sentence Transformer Semantic Similarity
+# Minimal dependencies; no training / FastAPI / LLM / RAG.
+
+# Sentence Transformers – pretrained model loading and inference
+sentence-transformers>=2.7.0
+
+# Numerical operations (embedding arithmetic, cosine similarity)
+numpy>=1.26.0
