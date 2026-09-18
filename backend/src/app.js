@@ -5,11 +5,17 @@ require("dotenv").config();
 
 const connectDB = require("./services/db");
 
+// Routes
+const resumeRouter = require("./routes/resumeRoutes");
+
 const app = express();
 
 // Middlewares
 app.use(cors());
 app.use(express.json());
+
+// API Routes
+app.use("/api/resume", resumeRouter);
 
 // Health Check Endpoint
 app.get("/api/health", (req, res) => {
@@ -36,7 +42,7 @@ connectDB();
 
 // Start Server
 app.listen(PORT, () => {
-    console.log(`🚀 Server running on port ${PORT}`);
+    console.log(` Server running on port ${PORT}`);
 });
 
 module.exports = app;
