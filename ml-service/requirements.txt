@@ -1,10 +1,20 @@
 # ml-service/requirements.txt
 #
-# Feature 4B – Sentence Transformer Semantic Similarity
-# Minimal dependencies; no training / FastAPI / LLM / RAG.
+# Feature 4D – FastAPI ML Inference Service
+# Full dependency list for the MockMate ML service.
 
-# Sentence Transformers – pretrained model loading and inference
+# ── Web framework ──────────────────────────────────────────────────────────
+fastapi>=0.111.0
+uvicorn[standard]>=0.29.0
+
+# ── ML / numeric ───────────────────────────────────────────────────────────
+scikit-learn==1.6.1
+joblib>=1.4.0
+numpy>=1.26.0
+pandas>=2.2.0
+
+# ── Sentence Transformers (semantic similarity) ────────────────────────────
 sentence-transformers>=2.7.0
 
-# Numerical operations (embedding arithmetic, cosine similarity)
-numpy>=1.26.0
+# ── HTTP client (used by test_api.py) ─────────────────────────────────────
+requests>=2.31.0
