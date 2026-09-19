@@ -1,15 +1,18 @@
 /**
  * matchController.js
  * ==================
- * Controller for Feature 4E – Node Backend integration with Python ML Service.
+ * Controller for Feature 4F – Node Backend resumeId-based matching with Python ML Service.
  *
  * Exposes POST /api/match
- * Receives: { resumeText, jobDescription }
+ * Receives: { resumeId, jdText }
+ * Fetches: Resume document from MongoDB by resumeId (extracting field `extractedText`)
  * Calls: POST http://localhost:8000/predict
  * Returns: { matchScore, fitClass, skillGaps, features }
  */
 
+const mongoose = require("mongoose");
 const axios = require("axios");
+const Resume = require("../models/Resume");
 
 const PYTHON_ML_URL = process.env.PYTHON_ML_SERVICE_URL || "http://localhost:8000";
 
@@ -18,30 +21,55 @@ const PYTHON_ML_URL = process.env.PYTHON_ML_SERVICE_URL || "http://localhost:800
  */
 async function getMatchResult(req, res) {
   try {
-    const { resumeText, jobDescription } = req.body || {};
+    const { resumeId, jdText } = req.body || {};
 
-    // 1. Validation
-    if (
-      !resumeText ||
-      typeof resumeText !== "string" ||
-      !resumeText.trim() ||
-      !jobDescription ||
-      typeof jobDescription !== "string" ||
-      !jobDescription.trim()
-    ) {
+    // 1. Validate inputs
+    if (!resumeId) {
       return res.status(400).json({
-        error: "resumeText and jobDescription are required and must not be empty.",
+        error: "resumeId is required.",
       });
     }
 
-    // 2. Call Python ML Service POST /predict
+    if (!mongoose.Types.ObjectId.isValid(resumeId)) {
+      return res.status(400).json({
+        error: "Invalid resumeId format. Must be a valid MongoDB ObjectId.",
+      });
+    }
+
+    if (!jdText || typeof jdText !== "string" || !jdText.trim()) {
+      return res.status(400).json({
+        error: "jdText is required and must not be empty.",
+      });
+    }
+
+    // 2. Find Resume document by resumeId
+    let resumeDoc;
+    try {
+      resumeDoc = await Resume.findById(resumeId);
+    } catch (dbErr) {
+      console.error("[MatchController] Database query error:", dbErr.message);
+      return res.status(500).json({
+        error: "Database query failed.",
+      });
+    }
+
+    if (!resumeDoc) {
+      return res.status(404).json({
+        error: `Resume document with id '${resumeId}' not found.`,
+      });
+    }
+
+    // 3. Extract stored cleaned resume text (exact schema field: extractedText)
+    const storedResumeText = resumeDoc.extractedText || "";
+
+    // 4. Call Python ML Service POST /predict
     let mlResponse;
     try {
       mlResponse = await axios.post(
         `${PYTHON_ML_URL}/predict`,
         {
-          resume_text: resumeText.trim(),
-          job_description: jobDescription.trim(),
+          resume_text: storedResumeText,
+          job_description: jdText.trim(),
         },
         { timeout: 30000 }
       );
@@ -55,10 +83,10 @@ async function getMatchResult(req, res) {
       });
     }
 
-    // 3. Process Python response
+    // 5. Process Python ML service response
     const data = mlResponse.data || {};
 
-    // 4. Return formatted response shape
+    // 6. Return formatted response shape
     return res.status(200).json({
       matchScore: data.matchScore,
       fitClass: data.fitClass,
