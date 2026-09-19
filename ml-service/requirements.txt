@@ -13,8 +13,11 @@ joblib>=1.4.0
 numpy>=1.26.0
 pandas>=2.2.0
 
-# ── Sentence Transformers (semantic similarity) ────────────────────────────
+# ── Sentence Transformers (semantic similarity & embeddings) ───────────────
 sentence-transformers>=2.7.0
+
+# ── Local RAG Vector Store ────────────────────────────────────────────────
+faiss-cpu>=1.7.4
 
 # ── HTTP client (used by test_api.py) ─────────────────────────────────────
 requests>=2.31.0
