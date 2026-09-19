@@ -13,6 +13,7 @@
 const mongoose = require("mongoose");
 const axios = require("axios");
 const Resume = require("../models/Resume");
+const { extractMatchingFeatures } = require("../services/matchingFeatureExtractor");
 
 const PYTHON_ML_URL = process.env.PYTHON_ML_SERVICE_URL || "http://localhost:8000";
 
@@ -59,8 +60,10 @@ async function getMatchResult(req, res) {
       });
     }
 
-    // 3. Extract stored cleaned resume text (exact schema field: extractedText)
+    // 3. Extract stored cleaned resume text and calculate deterministic matching features
     const storedResumeText = resumeDoc.extractedText || "";
+    const matchingFeatures = extractMatchingFeatures(resumeDoc, { description: jdText });
+    const computedSkillGaps = matchingFeatures.skillGaps || [];
 
     // 4. Call Python ML Service POST /predict
     let mlResponse;
@@ -86,11 +89,11 @@ async function getMatchResult(req, res) {
     // 5. Process Python ML service response
     const data = mlResponse.data || {};
 
-    // 6. Return formatted response shape
+    // 6. Return formatted response shape with deterministic skillGaps
     return res.status(200).json({
       matchScore: data.matchScore,
       fitClass: data.fitClass,
-      skillGaps: data.skillGaps || [],
+      skillGaps: (data.skillGaps && data.skillGaps.length > 0) ? data.skillGaps : computedSkillGaps,
       features: data.features || {},
     });
   } catch (err) {
