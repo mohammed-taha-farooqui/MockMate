@@ -42,6 +42,7 @@ if str(_BASE_DIR) not in sys.path:
     sys.path.insert(0, str(_BASE_DIR))
 
 from features.embeddings import cosine_similarity  # noqa: E402
+from features.answer_features import extract_answer_features  # noqa: E402
 
 # ---------------------------------------------------------------------------
 # Logging
@@ -57,6 +58,7 @@ logger = logging.getLogger(__name__)
 # ---------------------------------------------------------------------------
 MODEL_PATH = _BASE_DIR / "models" / "resume_job_match_model.joblib"
 LABEL_MAP_PATH = _BASE_DIR / "models" / "label_mapping.joblib"
+ANSWER_MODEL_PATH = _BASE_DIR / "models" / "answer_scoring_model.joblib"
 
 # ---------------------------------------------------------------------------
 # Text cleaning – MUST match Colab training pre-processing exactly
@@ -325,13 +327,22 @@ except Exception as exc:
 
 _model_loaded: bool = True
 
+try:
+    _answer_model = joblib.load(ANSWER_MODEL_PATH)
+    logger.info("Loaded answer scoring model: %s", _answer_model)
+    _answer_model_loaded: bool = True
+except Exception as exc:
+    logger.error("Failed to load answer scoring model from %s: %s", ANSWER_MODEL_PATH, exc)
+    _answer_model = None
+    _answer_model_loaded = False
+
 # ---------------------------------------------------------------------------
 # FastAPI application
 # ---------------------------------------------------------------------------
 
 app = FastAPI(
     title="MockMate ML Inference Service",
-    description="Resume vs Job Description match scoring using LogisticRegression + Sentence Transformers.",
+    description="Resume vs Job Description match scoring and Answer Analysis scoring.",
     version="1.0.0",
 )
 
@@ -358,14 +369,43 @@ class PredictResponse(BaseModel):
     features: Dict[str, float]
 
 
+class PredictAnswerRequest(BaseModel):
+    questionText: str
+    referenceAnswer: str = ""
+    candidateAnswer: str
+
+    @field_validator("questionText", "candidateAnswer")
+    @classmethod
+    def must_not_be_empty(cls, v: str) -> str:
+        if not v or not v.strip():
+            raise ValueError("Field must not be empty or whitespace-only.")
+        return v
+
+
+class AnswerFeaturesResponse(BaseModel):
+    semanticSimilarity: float
+    keywordOverlap: float
+    answerLength: float
+    technicalKeywordCount: float
+
+
+class PredictAnswerResponse(BaseModel):
+    score: float
+    features: AnswerFeaturesResponse
+
+
 # ---------------------------------------------------------------------------
 # Routes
 # ---------------------------------------------------------------------------
 
 @app.get("/health")
 async def health() -> dict:
-    """Liveness probe – returns 200 when the service and model are ready."""
-    return {"status": "ok", "modelLoaded": _model_loaded}
+    """Liveness probe – returns 200 when the service and models are ready."""
+    return {
+        "status": "ok",
+        "modelLoaded": _model_loaded,
+        "answerModelLoaded": _answer_model_loaded,
+    }
 
 
 @app.post("/predict", response_model=PredictResponse)
@@ -420,3 +460,57 @@ async def predict(request: PredictRequest) -> PredictResponse:
         fitClass=str(fit_class),
         features=feature_dict,
     )
+
+
+@app.post("/predict-answer", response_model=PredictAnswerResponse)
+async def predict_answer(request: PredictAnswerRequest) -> PredictAnswerResponse:
+    """
+    Predict score (0-5 scale) for a candidate's answer based on feature extraction and Ridge regression.
+    """
+    if not _answer_model_loaded or _answer_model is None:
+        raise HTTPException(status_code=500, detail="Answer scoring model is not loaded.")
+
+    try:
+        raw_features = extract_answer_features(
+            request.questionText,
+            request.referenceAnswer,
+            request.candidateAnswer,
+        )
+    except Exception as exc:
+        logger.exception("Answer feature extraction failed")
+        raise HTTPException(status_code=500, detail=f"Feature extraction error: {exc}") from exc
+
+    # Feature vector order:
+    # 1. semantic_similarity
+    # 2. keyword_overlap
+    # 3. answer_length
+    # 4. technical_keyword_count
+    feature_df = pd.DataFrame([{
+        "semantic_similarity": raw_features["semantic_similarity"],
+        "keyword_overlap": raw_features["keyword_overlap"],
+        "answer_length": raw_features["answer_length"],
+        "technical_keyword_count": float(raw_features["technical_keyword_count"]),
+    }])
+
+    try:
+        raw_score = float(_answer_model.predict(feature_df)[0])
+        clamped_score = round(max(0.0, min(5.0, raw_score)), 2)
+    except Exception as exc:
+        logger.exception("Answer model inference failed")
+        raise HTTPException(status_code=500, detail=f"Inference error: {exc}") from exc
+
+    logger.info(
+        "Answer Prediction: score=%.2f (raw=%.2f) features=%s",
+        clamped_score, raw_score, raw_features,
+    )
+
+    return PredictAnswerResponse(
+        score=clamped_score,
+        features=AnswerFeaturesResponse(
+            semanticSimilarity=raw_features["semantic_similarity"],
+            keywordOverlap=raw_features["keyword_overlap"],
+            answerLength=raw_features["answer_length"],
+            technicalKeywordCount=float(raw_features["technical_keyword_count"]),
+        ),
+    )
+

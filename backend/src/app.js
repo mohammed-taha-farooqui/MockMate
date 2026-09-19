@@ -9,6 +9,7 @@ const connectDB = require("./services/db");
 const resumeRouter = require("./routes/resumeRoutes");
 const matchRouter = require("./routes/matchRoutes");
 const interviewRouter = require("./routes/interviewRoutes");
+const answerScoreRouter = require("./routes/answerScoreRoutes");
 
 const app = express();
 
@@ -20,6 +21,7 @@ app.use(express.json());
 app.use("/api/resume", resumeRouter);
 app.use("/api/match", matchRouter);
 app.use("/api/interview", interviewRouter);
+app.use("/api/score-answer", answerScoreRouter);
 
 // Health Check Endpoint
 app.get("/api/health", (req, res) => {
