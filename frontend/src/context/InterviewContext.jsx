@@ -53,6 +53,34 @@ export function InterviewProvider({ children }) {
     return { jobDescription: "" };
   });
 
+  // Resume upload result from POST /api/resume/upload
+  const [resumeId, setResumeId] = useState(() => {
+    try {
+      const saved = sessionStorage.getItem(STORAGE_KEY);
+      if (saved) {
+        const parsed = JSON.parse(saved);
+        return parsed.resumeId || null;
+      }
+    } catch {
+      // ignore storage parsing error
+    }
+    return null;
+  });
+
+  // Structured fields extracted by the backend resume parser
+  const [extractedFields, setExtractedFields] = useState(() => {
+    try {
+      const saved = sessionStorage.getItem(STORAGE_KEY);
+      if (saved) {
+        const parsed = JSON.parse(saved);
+        return parsed.extractedFields || null;
+      }
+    } catch {
+      // ignore storage parsing error
+    }
+    return null;
+  });
+
   // Synchronize serializable state to sessionStorage whenever it changes
   useEffect(() => {
     try {
@@ -64,20 +92,26 @@ export function InterviewProvider({ children }) {
           fileType: resume.fileType || (resume.file ? resume.file.type : ""),
         },
         job,
+        // Store the real resumeId and extractedFields returned by the backend
+        resumeId,
+        extractedFields,
       };
       sessionStorage.setItem(STORAGE_KEY, JSON.stringify(payload));
     } catch (e) {
       console.warn("Failed to persist setup data to sessionStorage:", e);
     }
-  }, [candidate, resume, job]);
+  }, [candidate, resume, job, resumeId, extractedFields]);
 
   /**
    * Updates all setup fields simultaneously.
+   * Optionally accepts resumeId and extractedFields from the backend response.
    */
   const setSetupData = ({
     candidate: candidateData,
     resume: resumeData,
     job: jobData,
+    resumeId: resumeIdData,
+    extractedFields: extractedFieldsData,
   }) => {
     if (candidateData) {
       setCandidate({
@@ -101,15 +135,27 @@ export function InterviewProvider({ children }) {
         jobDescription: jobData.jobDescription || "",
       });
     }
+
+    // Store the real resumeId returned by POST /api/resume/upload
+    if (resumeIdData !== undefined) {
+      setResumeId(resumeIdData);
+    }
+
+    // Store the extractedFields object exactly as returned by the backend
+    if (extractedFieldsData !== undefined) {
+      setExtractedFields(extractedFieldsData);
+    }
   };
 
   /**
-   * Resets candidate setup state.
+   * Resets candidate setup state, including API-returned fields.
    */
   const clearSetupData = () => {
     setCandidate({ name: "", email: "" });
     setResume({ file: null, fileName: "", fileSize: 0, fileType: "" });
     setJob({ jobDescription: "" });
+    setResumeId(null);
+    setExtractedFields(null);
     try {
       sessionStorage.removeItem(STORAGE_KEY);
     } catch {
@@ -124,6 +170,11 @@ export function InterviewProvider({ children }) {
     setResume,
     job,
     setJob,
+    // Backend upload result — set by Setup.jsx after POST /api/resume/upload succeeds
+    resumeId,
+    setResumeId,
+    extractedFields,
+    setExtractedFields,
     setSetupData,
     clearSetupData,
   };

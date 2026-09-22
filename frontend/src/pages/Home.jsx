@@ -1,5 +1,6 @@
 import { Link } from "react-router-dom";
-import { Mic, ChevronRight, Zap, BarChart2 } from "lucide-react";
+import { Mic, ChevronRight, Zap, BarChart2, LogOut } from "lucide-react";
+import { useAuthContext } from "../context/AuthContext";
 
 const features = [
   {
@@ -20,6 +21,8 @@ const features = [
 ];
 
 export default function Home() {
+  const { currentUser, isAuthenticated, logout } = useAuthContext();
+
   return (
     <div className="mm-page" style={{ gap: "4rem" }}>
       {/* Hero */}
@@ -46,14 +49,33 @@ export default function Home() {
           progress — all in one place. No recruiters, just you and your growth.
         </p>
 
-        <div style={{ display: "flex", gap: "0.875rem", justifyContent: "center", flexWrap: "wrap" }}>
-          <Link to="/setup" className="mm-btn mm-btn-primary" style={{ fontSize: "1rem", padding: "0.75rem 2rem" }}>
-            Start Mock Interview <ChevronRight size={16} />
-          </Link>
-          <Link to="/progress" className="mm-btn mm-btn-secondary" style={{ fontSize: "1rem", padding: "0.75rem 2rem" }}>
-            View My Progress
-          </Link>
-        </div>
+        {isAuthenticated ? (
+          <div style={{ display: "flex", gap: "0.875rem", justifyContent: "center", alignItems: "center", flexWrap: "wrap" }}>
+            <Link to="/setup" className="mm-btn mm-btn-primary" style={{ fontSize: "1rem", padding: "0.75rem 2rem" }}>
+              Start Interview <ChevronRight size={16} />
+            </Link>
+            <Link to="/progress" className="mm-btn mm-btn-secondary" style={{ fontSize: "1rem", padding: "0.75rem 2rem" }}>
+              View My Progress
+            </Link>
+            <button
+              onClick={logout}
+              className="mm-btn mm-btn-ghost"
+              style={{ fontSize: "0.9375rem", padding: "0.75rem 1.25rem" }}
+              title="Sign out of candidate account"
+            >
+              <LogOut size={16} /> Logout
+            </button>
+          </div>
+        ) : (
+          <div style={{ display: "flex", gap: "0.875rem", justifyContent: "center", alignItems: "center", flexWrap: "wrap" }}>
+            <Link to="/login" className="mm-btn mm-btn-primary" style={{ fontSize: "1rem", padding: "0.75rem 2rem" }}>
+              Login / Create Account <ChevronRight size={16} />
+            </Link>
+            <Link to="/signup" className="mm-btn mm-btn-secondary" style={{ fontSize: "1rem", padding: "0.75rem 2rem" }}>
+              Create Account
+            </Link>
+          </div>
+        )}
       </div>
 
       {/* Feature cards */}

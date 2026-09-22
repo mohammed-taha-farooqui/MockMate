@@ -2,31 +2,41 @@ import { Mic, MicOff, Loader2 } from "lucide-react";
 
 /**
  * VoiceButton.jsx
- * Reusable microphone button for voice recording UI.
+ * Reusable microphone button for voice / speech-recognition UI.
  *
  * Props:
- *  - isRecording: boolean — true while actively recording
- *  - isLoading:   boolean — processing / waiting state
- *  - disabled:    boolean — prevents interaction
- *  - onClick:     callback to toggle recording
- *  - size:        "sm" | "md" | "lg" (default "md")
+ *  - isRecording:  boolean — true while actively listening / recording
+ *  - isLoading:    boolean — processing / waiting state
+ *  - disabled:     boolean — prevents interaction
+ *  - unsupported:  boolean — true when speech recognition is not available
+ *  - onClick:      callback to toggle recording
+ *  - size:         "sm" | "md" | "lg" (default "md")
+ *  - label:        optional override for the status label text
  *
- * Note: does NOT implement actual MediaRecorder logic.
- * The parent page is responsible for audio capture.
+ * Note: does NOT implement actual MediaRecorder or SpeechRecognition logic.
+ * The parent page is responsible for audio capture / speech recognition.
  */
 export default function VoiceButton({
   isRecording = false,
   isLoading = false,
   disabled = false,
+  unsupported = false,
   onClick,
   size = "md",
+  label: labelOverride,
 }) {
   const dim = { sm: 56, md: 80, lg: 112 }[size] ?? 80;
   const iconSize = { sm: 22, md: 32, lg: 44 }[size] ?? 32;
 
   /* Colour and label logic */
   let bg, border, iconColour, label, ringColour;
-  if (isLoading) {
+  if (unsupported) {
+    bg = "rgba(255,255,255,0.03)";
+    border = "var(--mm-border)";
+    iconColour = "var(--mm-text-faint)";
+    ringColour = "transparent";
+    label = "Voice input not supported";
+  } else if (isLoading) {
     bg = "var(--mm-bg-card)";
     border = "var(--mm-border)";
     iconColour = "var(--mm-text-muted)";
@@ -37,14 +47,17 @@ export default function VoiceButton({
     border = "var(--mm-danger)";
     iconColour = "var(--mm-danger)";
     ringColour = "rgba(239,68,68,0.25)";
-    label = "Recording — tap to stop";
+    label = "Listening — tap to stop";
   } else {
     bg = "rgba(99,102,241,0.12)";
     border = "var(--mm-accent)";
     iconColour = "var(--mm-accent-glow)";
     ringColour = "rgba(99,102,241,0.2)";
-    label = "Tap to record your answer";
+    label = "Tap to start voice answer";
   }
+
+  // Allow parent to override the displayed label
+  if (labelOverride) label = labelOverride;
 
   return (
     <div
