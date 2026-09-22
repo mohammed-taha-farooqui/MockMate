@@ -26,6 +26,7 @@ import {
 } from "../utils/validation";
 import LoadingSpinner from "../components/LoadingSpinner";
 import ErrorMessage from "../components/ErrorMessage";
+import { uploadResume } from "../services/resumeService";
 
 export default function Setup() {
   const navigate = useNavigate();

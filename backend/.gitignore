@@ -1,8 +1,4 @@
-node_modules/
-.env
-uploads/
-__pycache__/
-*.pyc# Dependencies
+# Dependencies
 node_modules/
 
 # Environment Variables

@@ -42,7 +42,7 @@ export function clearToken() {
  * Persist safe user profile fields (name + email, no password).
  */
 export function saveUser(user) {
-  localStorage.setItem(USER_KEY, JSON.stringify({ name: user.name || "", email: user.email || "" }));
+  localStorage.setItem(USER_KEY, JSON.stringify({ id: user?.id || user?._id || "", name: user?.name || "", email: user?.email || "" }));
 }
 
 export function getSavedUser() {

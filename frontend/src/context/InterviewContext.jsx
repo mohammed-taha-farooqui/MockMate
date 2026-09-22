@@ -67,16 +67,72 @@ export function InterviewProvider({ children }) {
     return null;
   });
 
-  // Structured fields extracted by the backend resume parser
-  const [extractedFields, setExtractedFields] = useState(() => {
+  // Match result from POST /api/match
+  const [matchResult, setMatchResult] = useState(() => {
     try {
       const saved = sessionStorage.getItem(STORAGE_KEY);
       if (saved) {
         const parsed = JSON.parse(saved);
-        return parsed.extractedFields || null;
+        return parsed.matchResult || null;
       }
     } catch {
-      // ignore storage parsing error
+      // ignore
+    }
+    return null;
+  });
+
+  // Current interview ID from POST /api/interview/create
+  const [interviewId, setInterviewId] = useState(() => {
+    try {
+      const saved = sessionStorage.getItem(STORAGE_KEY);
+      if (saved) {
+        const parsed = JSON.parse(saved);
+        return parsed.interviewId || null;
+      }
+    } catch {
+      // ignore
+    }
+    return null;
+  });
+
+  // Interview questions saved in DB
+  const [interviewQuestions, setInterviewQuestions] = useState(() => {
+    try {
+      const saved = sessionStorage.getItem(STORAGE_KEY);
+      if (saved) {
+        const parsed = JSON.parse(saved);
+        return parsed.interviewQuestions || [];
+      }
+    } catch {
+      // ignore
+    }
+    return [];
+  });
+
+  // Live session scoring results
+  const [sessionResults, setSessionResults] = useState(() => {
+    try {
+      const saved = sessionStorage.getItem(STORAGE_KEY);
+      if (saved) {
+        const parsed = JSON.parse(saved);
+        return parsed.sessionResults || null;
+      }
+    } catch {
+      // ignore
+    }
+    return null;
+  });
+
+  // Final aggregated report
+  const [reportData, setReportData] = useState(() => {
+    try {
+      const saved = sessionStorage.getItem(STORAGE_KEY);
+      if (saved) {
+        const parsed = JSON.parse(saved);
+        return parsed.reportData || null;
+      }
+    } catch {
+      // ignore
     }
     return null;
   });
@@ -92,15 +148,19 @@ export function InterviewProvider({ children }) {
           fileType: resume.fileType || (resume.file ? resume.file.type : ""),
         },
         job,
-        // Store the real resumeId and extractedFields returned by the backend
         resumeId,
         extractedFields,
+        matchResult,
+        interviewId,
+        interviewQuestions,
+        sessionResults,
+        reportData,
       };
       sessionStorage.setItem(STORAGE_KEY, JSON.stringify(payload));
     } catch (e) {
       console.warn("Failed to persist setup data to sessionStorage:", e);
     }
-  }, [candidate, resume, job, resumeId, extractedFields]);
+  }, [candidate, resume, job, resumeId, extractedFields, matchResult, interviewId, interviewQuestions, sessionResults, reportData]);
 
   /**
    * Updates all setup fields simultaneously.
@@ -112,6 +172,8 @@ export function InterviewProvider({ children }) {
     job: jobData,
     resumeId: resumeIdData,
     extractedFields: extractedFieldsData,
+    matchResult: matchResultData,
+    interviewId: interviewIdData,
   }) => {
     if (candidateData) {
       setCandidate({
@@ -136,14 +198,20 @@ export function InterviewProvider({ children }) {
       });
     }
 
-    // Store the real resumeId returned by POST /api/resume/upload
     if (resumeIdData !== undefined) {
       setResumeId(resumeIdData);
     }
 
-    // Store the extractedFields object exactly as returned by the backend
     if (extractedFieldsData !== undefined) {
       setExtractedFields(extractedFieldsData);
+    }
+
+    if (matchResultData !== undefined) {
+      setMatchResult(matchResultData);
+    }
+
+    if (interviewIdData !== undefined) {
+      setInterviewId(interviewIdData);
     }
   };
 
@@ -156,6 +224,11 @@ export function InterviewProvider({ children }) {
     setJob({ jobDescription: "" });
     setResumeId(null);
     setExtractedFields(null);
+    setMatchResult(null);
+    setInterviewId(null);
+    setInterviewQuestions([]);
+    setSessionResults(null);
+    setReportData(null);
     try {
       sessionStorage.removeItem(STORAGE_KEY);
     } catch {
@@ -170,11 +243,20 @@ export function InterviewProvider({ children }) {
     setResume,
     job,
     setJob,
-    // Backend upload result — set by Setup.jsx after POST /api/resume/upload succeeds
     resumeId,
     setResumeId,
     extractedFields,
     setExtractedFields,
+    matchResult,
+    setMatchResult,
+    interviewId,
+    setInterviewId,
+    interviewQuestions,
+    setInterviewQuestions,
+    sessionResults,
+    setSessionResults,
+    reportData,
+    setReportData,
     setSetupData,
     clearSetupData,
   };
