@@ -25,3 +25,6 @@ Thumbs.db
 # Python
 __pycache__/
 *.pyc
+
+ml-service/venv/
+venv/
